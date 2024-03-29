@@ -55,19 +55,23 @@ func StemmingWords(words []string) string {
 }
 
 func main() {
-	text := flag.String("s", "", "Text from arguments")
+	var words string
+	flag.StringVar(&words, "s", "", "Text from arguments")
 	flag.Parse()
-	words := strings.Fields(*text)
 
 	err := DownloadFile(stopWordsFile, fileUrl)
-
 	if err != nil {
 		fmt.Println("Error downloading file: ", err)
 		return
 	}
 
-	fileData, _ = os.ReadFile(stopWordsFile)
+	fileData, err = os.ReadFile(stopWordsFile)
+	if err != nil {
+		fmt.Println("Error reading file: ", err)
+		return
+	}
+
 	stopWordList = strings.Split(string(fileData), ",")
 
-	fmt.Println(StemmingWords(words))
+	fmt.Println(StemmingWords(strings.Split(words, " ")))
 }
