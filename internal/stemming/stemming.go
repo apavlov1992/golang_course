@@ -1,10 +1,10 @@
-package main
+package stemming
 
 import (
-	"flag"
 	"fmt"
 	"github.com/kljensen/snowball/english"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"slices"
@@ -37,11 +37,12 @@ func DownloadFile(filepath string, url string) error {
 }
 
 func isStopWord(word string) bool {
+
 	return slices.Contains(stopWordList, word)
 }
 
-func StemmingWords(words []string) string {
-	wordsList := []string{} //to do map
+func stemmingWords(words []string) []string {
+	wordsList := []string{}
 
 	for _, word := range words {
 		if len(word) > 2 && !isStopWord(word) {
@@ -50,28 +51,23 @@ func StemmingWords(words []string) string {
 		}
 	}
 	slices.Sort(wordsList)
-	return strings.Join(slices.Compact(wordsList), " ")
+	return slices.Compact(wordsList)
 
 }
 
-func main() {
-	var words string
-	flag.StringVar(&words, "s", "", "Text from arguments")
-	flag.Parse()
+func StemmingMain(words string) []string {
 
 	err := DownloadFile(stopWordsFile, fileUrl)
 	if err != nil {
-		fmt.Println("Error downloading file: ", err)
-		return
+		log.Fatal(err)
 	}
 
 	fileData, err = os.ReadFile(stopWordsFile)
 	if err != nil {
-		fmt.Println("Error reading file: ", err)
-		return
+		log.Fatal(err)
 	}
 
 	stopWordList = strings.Split(string(fileData), ",")
 
-	fmt.Println(StemmingWords(strings.Split(words, " ")))
+	return stemmingWords(strings.Split(words, " "))
 }
