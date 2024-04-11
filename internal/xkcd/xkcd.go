@@ -2,12 +2,9 @@ package xkcd
 
 import (
 	"encoding/json"
-	"github.com/apavlov1992/golang_course/internal/stemming"
-	"io"
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
 )
 
 type Client struct {
@@ -16,7 +13,7 @@ type Client struct {
 }
 
 type ComicsInfo struct {
-	Num         interface{}
+	Num         int    `json:"num"`
 	URL         string `json:"img"`
 	Description string `json:"alt"`
 }
@@ -27,6 +24,20 @@ func SerializeToMap(c interface{}) []byte {
 		log.Fatal(err)
 	}
 	return jsonContent
+}
+
+func (client Client) GetMaxId() int {
+	var comic ComicsInfo
+	resp, err := client.Get(client.BaseUrl + "/info.0.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer resp.Body.Close()
+	err = json.NewDecoder(resp.Body).Decode(&comic)
+	lastComics := comic.Num
+
+	return lastComics
 }
 
 func (client Client) GetComics(numberOfComics int) ([]ComicsInfo, error) {
@@ -42,21 +53,15 @@ func (client Client) GetComics(numberOfComics int) ([]ComicsInfo, error) {
 			log.Fatal(err)
 		}
 
-		bodyBytes, err := io.ReadAll(resp.Body)
+		defer resp.Body.Close()
+
+		err = json.NewDecoder(resp.Body).Decode(&comic)
+
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		err = json.Unmarshal(bodyBytes, &comic)
-		if err != nil {
-			log.Fatal(err)
-		}
-		comic.Description = strings.Join(
-			stemming.StemmingMain(comic.Description),
-			" ",
-		)
-
-		comic.Num = strconv.Itoa(comicsNumber)
+		comic.Num = comicsNumber
 		comicsList = append(comicsList, comic)
 	}
 	return comicsList, nil

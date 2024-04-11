@@ -16,6 +16,7 @@ var (
 	fileUrl       = fmt.Sprintf("https://gist.githubusercontent.com/ZohebAbai/513218c3468130eacff6481f424e4e64/raw/b70776f341a148293ff277afa0d0302c8c38f7e2/" + stopWordsFile)
 	fileData      []byte
 	stopWordList  []string
+	wordsMap      map[string]any
 )
 
 func DownloadFile(filepath string, url string) error {
@@ -37,8 +38,8 @@ func DownloadFile(filepath string, url string) error {
 }
 
 func isStopWord(word string) bool {
-
-	return slices.Contains(stopWordList, word)
+	_, ok := wordsMap[word]
+	return ok
 }
 
 func stemmingWords(words []string) []string {
@@ -51,11 +52,11 @@ func stemmingWords(words []string) []string {
 		}
 	}
 	slices.Sort(wordsList)
-	return slices.Compact(wordsList)
 
+	return wordsList
 }
 
-func StemmingMain(words string) []string {
+func StemmingString(words string) []string {
 
 	err := DownloadFile(stopWordsFile, fileUrl)
 	if err != nil {
@@ -68,6 +69,10 @@ func StemmingMain(words string) []string {
 	}
 
 	stopWordList = strings.Split(string(fileData), ",")
+	wordsMap = make(map[string]any)
+	for _, word := range stopWordList {
+		wordsMap[word] = struct{}{}
+	}
 
 	return stemmingWords(strings.Split(words, " "))
 }
