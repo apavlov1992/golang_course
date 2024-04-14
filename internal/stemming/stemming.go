@@ -1,10 +1,10 @@
-package main
+package stemming
 
 import (
-	"flag"
 	"fmt"
 	"github.com/kljensen/snowball/english"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"slices"
@@ -16,6 +16,7 @@ var (
 	fileUrl       = fmt.Sprintf("https://gist.githubusercontent.com/ZohebAbai/513218c3468130eacff6481f424e4e64/raw/b70776f341a148293ff277afa0d0302c8c38f7e2/" + stopWordsFile)
 	fileData      []byte
 	stopWordList  []string
+	wordsMap      map[string]any
 )
 
 func DownloadFile(filepath string, url string) error {
@@ -37,11 +38,12 @@ func DownloadFile(filepath string, url string) error {
 }
 
 func isStopWord(word string) bool {
-	return slices.Contains(stopWordList, word)
+	_, ok := wordsMap[word]
+	return ok
 }
 
-func StemmingWords(words []string) string {
-	wordsList := []string{} //to do map
+func stemmingWords(words []string) []string {
+	wordsList := []string{}
 
 	for _, word := range words {
 		if len(word) > 2 && !isStopWord(word) {
@@ -50,28 +52,27 @@ func StemmingWords(words []string) string {
 		}
 	}
 	slices.Sort(wordsList)
-	return strings.Join(slices.Compact(wordsList), " ")
 
+	return wordsList
 }
 
-func main() {
-	var words string
-	flag.StringVar(&words, "s", "", "Text from arguments")
-	flag.Parse()
+func StemmingString(words string) []string {
 
 	err := DownloadFile(stopWordsFile, fileUrl)
 	if err != nil {
-		fmt.Println("Error downloading file: ", err)
-		return
+		log.Fatal(err)
 	}
 
 	fileData, err = os.ReadFile(stopWordsFile)
 	if err != nil {
-		fmt.Println("Error reading file: ", err)
-		return
+		log.Fatal(err)
 	}
 
 	stopWordList = strings.Split(string(fileData), ",")
+	wordsMap = make(map[string]any)
+	for _, word := range stopWordList {
+		wordsMap[word] = struct{}{}
+	}
 
-	fmt.Println(StemmingWords(strings.Split(words, " ")))
+	return stemmingWords(strings.Split(words, " "))
 }
