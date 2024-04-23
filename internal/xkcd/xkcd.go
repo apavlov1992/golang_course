@@ -4,12 +4,18 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
+)
+
+var (
+	IDMap map[int]any
 )
 
 type Client struct {
 	http.Client
 	BaseUrl string
+	DB      string
 }
 
 type ComicsInfo struct {
@@ -40,29 +46,55 @@ func (client Client) GetMaxId() int {
 	return lastComics
 }
 
-func (client Client) GetComics(numberOfComics int) ([]ComicsInfo, error) {
-	var comicsList []ComicsInfo
+func (client Client) GetComics(comicNumber int) (ComicsInfo, error) {
 	var comic ComicsInfo
-	for comicsNumber := 1; comicsNumber <= numberOfComics; comicsNumber++ {
-		if comicsNumber == 404 {
-			continue
-		}
+	if comicNumber != 404 {
+		resp, err := client.Get(client.BaseUrl + strconv.Itoa(comicNumber) + "/info.0.json")
 
-		resp, err := client.Get(client.BaseUrl + strconv.Itoa(comicsNumber) + "/info.0.json")
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("Can't get response: ", err)
 		}
 
 		defer resp.Body.Close()
 
 		err = json.NewDecoder(resp.Body).Decode(&comic)
-
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("Can't get response body: ", err)
 		}
 
-		comic.Num = comicsNumber
-		comicsList = append(comicsList, comic)
+		comic.Num = comicNumber
+
 	}
-	return comicsList, nil
+	return comic, nil
+}
+
+func IDinDB(ID int) bool {
+	_, ok := IDMap[ID]
+	return ok
+}
+
+func (client Client) GetIdList() (map[int]any, error) {
+	var comicId ComicsInfo
+	var comicsIdList []int
+	content, err := os.Open(client.DB)
+
+	if err != nil {
+		log.Fatal("Error when opening file: ", err)
+	}
+
+	defer content.Close()
+
+	decoder := json.NewDecoder(content)
+	for decoder.More() {
+		IDMap = make(map[int]any)
+		err := decoder.Decode(&comicId)
+		if err != nil {
+			log.Fatal("Error when opening file: ", err)
+		}
+		comicsIdList = append(comicsIdList, comicId.Num)
+	}
+	for _, ID := range comicsIdList {
+		IDMap[ID] = struct{}{}
+	}
+	return IDMap, err
 }
