@@ -2,6 +2,7 @@ package xkcd
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -9,7 +10,9 @@ import (
 )
 
 var (
-	IDMap map[int]any
+	//TODO: Move to DB
+	IDMap    map[int]any
+	NotFound error = fmt.Errorf("HTTP Status %d", http.StatusNotFound)
 )
 
 type Client struct {
@@ -48,23 +51,23 @@ func (client Client) GetMaxId() int {
 
 func (client Client) GetComics(comicNumber int) (ComicsInfo, error) {
 	var comic ComicsInfo
-	if comicNumber != 404 {
-		resp, err := client.Get(client.BaseUrl + strconv.Itoa(comicNumber) + "/info.0.json")
+	resp, err := client.Get(client.BaseUrl + strconv.Itoa(comicNumber) + "/info.0.json")
 
-		if err != nil {
-			log.Fatal("Can't get response: ", err)
-		}
-
-		defer resp.Body.Close()
-
-		err = json.NewDecoder(resp.Body).Decode(&comic)
-		if err != nil {
-			log.Fatal("Can't get response body: ", err)
-		}
-
-		comic.Num = comicNumber
-
+	if err != nil {
+		log.Fatal("Can't get response: ", err)
 	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return comic, NotFound
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&comic)
+	if err != nil {
+		log.Fatal("Can't get response body: ", err)
+	}
+
+	comic.Num = comicNumber
 	return comic, nil
 }
 
@@ -73,6 +76,7 @@ func IDinDB(ID int) bool {
 	return ok
 }
 
+// TODO: Need to move in DB
 func (client Client) GetIdList() (map[int]any, error) {
 	var comicId ComicsInfo
 	var comicsIdList []int
