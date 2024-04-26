@@ -27,10 +27,12 @@ func NewComicsWorker(client xkcd.Client, wgCount int) *ComicsWorker {
 func (w ComicsWorker) handleComic(wg *sync.WaitGroup, inCh <-chan int, resCh chan resultWithError) {
 	defer wg.Done()
 	for i := range inCh {
-		comic, err := w.client.GetComics(i)
-		resCh <- resultWithError{
-			Comic: comic,
-			Err:   err,
+		if !xkcd.IDinDB(i) {
+			comic, err := w.client.GetComics(i)
+			resCh <- resultWithError{
+				Comic: comic,
+				Err:   err,
+			}
 		}
 	}
 }

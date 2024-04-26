@@ -48,7 +48,7 @@ func main() {
 	bar := progressbar.NewOptions(-1, progressbar.OptionShowCount(), progressbar.OptionSetDescription("Writing to DB..."))
 	for _, c := range comics {
 		bar.Add(1)
-		if !xkcd.IDinDB(c.Num) && c.Num != 0 {
+		if c.Num != 0 {
 			c.Description = strings.Join(stemming.StemmingString(c.Description), " ")
 			comicsDataInBytes := xkcd.SerializeToMap(c)
 			_, err = f.Write(comicsDataInBytes)
