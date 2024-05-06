@@ -3,6 +3,7 @@ package main
 import "C"
 import (
 	"flag"
+	"github.com/apavlov1992/golang_course/cmd/services"
 	"github.com/apavlov1992/golang_course/internal/config"
 	"github.com/apavlov1992/golang_course/internal/stemming"
 	"github.com/apavlov1992/golang_course/internal/xkcd"
@@ -17,7 +18,7 @@ import (
 func main() {
 
 	var configFileName string
-	flag.StringVar(&configFileName, "config", "/Users/a.pavlov/GolandProjects/golang_course/config/config.yaml", "Specify configuration file name to use.")
+	flag.StringVar(&configFileName, "config", "../config/config.yaml", "Specify configuration file name to use.")
 	flag.Parse()
 
 	cfg, err := config.NewConfig(configFileName)
@@ -33,7 +34,7 @@ func main() {
 
 	_, err = client.GetIdList()
 
-	worker := NewComicsWorker(client, 100)
+	worker := services.NewComicsWorker(client, 100)
 
 	comics, err2 := worker.HandleComics()
 	if err2 != nil {

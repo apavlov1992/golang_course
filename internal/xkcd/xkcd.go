@@ -80,7 +80,7 @@ func IDinDB(ID int) bool {
 func (client Client) GetIdList() (map[int]any, error) {
 	var comicId ComicsInfo
 	var comicsIdList []int
-	content, err := os.Open(client.DB)
+	content, err := os.OpenFile(client.DB, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 
 	if err != nil {
 		log.Fatal("Error when opening file: ", err)
