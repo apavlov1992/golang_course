@@ -1,6 +1,5 @@
 package main
 
-import "C"
 import (
 	"flag"
 	"github.com/apavlov1992/golang_course/cmd/services"
