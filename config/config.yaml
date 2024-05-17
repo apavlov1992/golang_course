@@ -1,2 +1,2 @@
 SourceUrl: "https://xkcd.com/"
-DBFile: "database.json"
+DBFile: "database.jsonl"

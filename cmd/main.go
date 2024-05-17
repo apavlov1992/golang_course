@@ -1,12 +1,12 @@
 package main
 
-import "C"
 import (
 	"flag"
-	"fmt"
+	"github.com/apavlov1992/golang_course/cmd/services"
 	"github.com/apavlov1992/golang_course/internal/config"
 	"github.com/apavlov1992/golang_course/internal/stemming"
 	"github.com/apavlov1992/golang_course/internal/xkcd"
+	"github.com/schollz/progressbar/v3"
 	"log"
 	"net/http"
 	"os"
@@ -15,10 +15,9 @@ import (
 )
 
 func main() {
+
 	var configFileName string
 	flag.StringVar(&configFileName, "config", "../config/config.yaml", "Specify configuration file name to use.")
-	numberOfComics := flag.Int("n", 0, "Number of comics to fetch")
-	outputJson := flag.Bool("o", false, "Output JSON in CLI or write to file")
 	flag.Parse()
 
 	cfg, err := config.NewConfig(configFileName)
@@ -29,29 +28,37 @@ func main() {
 	client := xkcd.Client{
 		Client:  http.Client{Timeout: 10 * time.Second},
 		BaseUrl: cfg.SourceUrl,
+		DB:      cfg.DBFile,
 	}
 
-	if *numberOfComics == 0 {
-		countOfAllComics := client.GetMaxId()
-		numberOfComics = &countOfAllComics
+	_, err = client.GetIdList()
+
+	worker := services.NewComicsWorker(client, 100)
+
+	comics, err2 := worker.HandleComics()
+	if err2 != nil {
+		log.Fatal("Error while handling comics: ", err)
 	}
 
-	ComicsData, err := client.GetComics(*numberOfComics)
+	f, err := os.OpenFile(cfg.DBFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Error when opening file: ", err)
 	}
-
-	for i := range ComicsData {
-		ComicsData[i].Description = strings.Join(stemming.StemmingString(ComicsData[i].Description), " ")
-	}
-
-	if *outputJson == true {
-		fmt.Println(ComicsData)
-	} else {
-		comicsDataInBytes := xkcd.SerializeToMap(ComicsData)
-		err := os.WriteFile(cfg.DBFile, comicsDataInBytes, 0644)
-		if err != nil {
-			log.Fatal(err)
+	defer f.Close()
+	bar := progressbar.NewOptions(-1, progressbar.OptionShowCount(), progressbar.OptionSetDescription("Writing to DB..."))
+	for _, c := range comics {
+		bar.Add(1)
+		if c.Num != 0 {
+			c.Description = strings.Join(stemming.StemmingString(c.Description), " ")
+			comicsDataInBytes := xkcd.SerializeToMap(c)
+			_, err = f.Write(comicsDataInBytes)
+			if err != nil {
+				log.Fatal("Error when writing to file: ", err)
+			}
+			_, err = f.Write([]byte("\n"))
+			if err != nil {
+				log.Fatal(err)
+			}
 		}
 	}
 }
