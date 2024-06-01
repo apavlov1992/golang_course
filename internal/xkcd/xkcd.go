@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 )
 
 var (
@@ -17,8 +18,9 @@ var (
 
 type Client struct {
 	http.Client
-	BaseUrl string
-	DB      string
+	BaseUrl   string
+	DB        string
+	IndexFile string
 }
 
 type ComicsInfo struct {
@@ -80,8 +82,7 @@ func IDinDB(ID int) bool {
 func (client Client) GetIdList() (map[int]any, error) {
 	var comicId ComicsInfo
 	var comicsIdList []int
-	content, err := os.OpenFile(client.DB, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-
+	content, err := os.OpenFile(client.DB, os.O_RDONLY|os.O_CREATE, 0644)
 	if err != nil {
 		log.Fatal("Error when opening file: ", err)
 	}
@@ -96,9 +97,59 @@ func (client Client) GetIdList() (map[int]any, error) {
 			log.Fatal("Error when opening file: ", err)
 		}
 		comicsIdList = append(comicsIdList, comicId.Num)
+
 	}
 	for _, ID := range comicsIdList {
 		IDMap[ID] = struct{}{}
 	}
+
 	return IDMap, err
+}
+
+func arrayToString(a []int, delim string) string {
+	return strings.Trim(strings.Replace(fmt.Sprint(a), " ", delim, -1), "")
+}
+
+func (client Client) GetWordIdList(word string) ([]int, error) {
+	var comicDescription ComicsInfo
+	var comicsIdList []int
+	content, err := os.OpenFile(client.DB, os.O_RDONLY|os.O_CREATE, 0644)
+	if err != nil {
+		log.Fatal("Error when opening file: ", err)
+	}
+
+	defer content.Close()
+
+	decoder := json.NewDecoder(content)
+	i := 0
+	for decoder.More() {
+		err := decoder.Decode(&comicDescription)
+		if err != nil {
+			log.Fatal("Error when opening file: ", err)
+		}
+		if strings.Contains(comicDescription.Description, word) {
+			comicsIdList = append(comicsIdList, comicDescription.Num)
+			i++
+		}
+		if i >= 10 {
+			break
+		}
+	}
+	return comicsIdList, nil
+}
+
+func (client Client) GetIdFromIndex(word string) (interface{}, error) {
+	data, err := os.ReadFile(client.IndexFile)
+	if err != nil {
+		log.Fatal("Error when opening file: ", err)
+	}
+
+	var jsonData map[string]interface{}
+	err = json.Unmarshal(data, &jsonData)
+	if err != nil {
+		log.Fatal("Error when unmarshalling json data: ", err)
+	}
+
+	value := jsonData[word]
+	return value, err
 }

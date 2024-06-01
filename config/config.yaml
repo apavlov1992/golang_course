@@ -1,2 +1,3 @@
 SourceUrl: "https://xkcd.com/"
 DBFile: "database.jsonl"
+IndexFile: "index.json"

@@ -52,7 +52,6 @@ func stemmingWords(words []string) []string {
 		}
 	}
 	slices.Sort(wordsList)
-
 	return wordsList
 }
 
