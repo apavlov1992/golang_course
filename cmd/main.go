@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"github.com/apavlov1992/golang_course/cmd/services"
 	"github.com/apavlov1992/golang_course/internal/config"
 	"github.com/apavlov1992/golang_course/internal/stemming"
@@ -15,9 +16,12 @@ import (
 )
 
 func main() {
-
+	var words string
 	var configFileName string
+	var index bool
+	flag.StringVar(&words, "s", "", "Text from arguments")
 	flag.StringVar(&configFileName, "config", "../config/config.yaml", "Specify configuration file name to use.")
+	flag.BoolVar(&index, "i", false, "Find in index file")
 	flag.Parse()
 
 	cfg, err := config.NewConfig(configFileName)
@@ -26,9 +30,10 @@ func main() {
 	}
 
 	client := xkcd.Client{
-		Client:  http.Client{Timeout: 10 * time.Second},
-		BaseUrl: cfg.SourceUrl,
-		DB:      cfg.DBFile,
+		Client:    http.Client{Timeout: 10 * time.Second},
+		BaseUrl:   cfg.SourceUrl,
+		DB:        cfg.DBFile,
+		IndexFile: cfg.IndexFile,
 	}
 
 	_, err = client.GetIdList()
@@ -41,11 +46,15 @@ func main() {
 	}
 
 	f, err := os.OpenFile(cfg.DBFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	i, err := os.OpenFile(cfg.IndexFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+
 	if err != nil {
 		log.Fatal("Error when opening file: ", err)
 	}
 	defer f.Close()
 	bar := progressbar.NewOptions(-1, progressbar.OptionShowCount(), progressbar.OptionSetDescription("Writing to DB..."))
+	stemmingFromCmd := stemming.StemmingString(words)
+	fmt.Println(stemmingFromCmd)
 	for _, c := range comics {
 		bar.Add(1)
 		if c.Num != 0 {
@@ -60,5 +69,25 @@ func main() {
 				log.Fatal(err)
 			}
 		}
+	}
+	IndexId := map[string]interface{}{}
+	if !index {
+		for _, c := range stemmingFromCmd {
+			var a []int
+			a, err = client.GetWordIdList(c)
+			IndexId[c] = a
+		}
+		b := xkcd.SerializeToMap(IndexId)
+		err = i.Truncate(0)
+		if _, err := i.Write(b); err != nil {
+			log.Fatal("Error when writing to file: ", err)
+		}
+	} else {
+		for _, c := range stemmingFromCmd {
+			var a interface{}
+			a, err = client.GetIdFromIndex(c)
+			IndexId[c] = a
+		}
+		fmt.Println(IndexId)
 	}
 }

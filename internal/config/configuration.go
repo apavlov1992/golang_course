@@ -10,6 +10,7 @@ type (
 	Config struct {
 		SourceUrl string `yaml:"SourceUrl"`
 		DBFile    string `yaml:"DBFile"`
+		IndexFile string `yaml:"IndexFile"`
 	}
 )
 
